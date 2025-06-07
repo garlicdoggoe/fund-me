@@ -11,6 +11,9 @@ contract HelperConfig is Script {
 
     NetworkConfig public activeNetworkConfig;
 
+    uint8 public constant DECIMALS = 8;
+    int256 public constant INITIAL_PRICE = 2000e8;
+
     // If config has different values, we can use a struct to store the values
     struct NetworkConfig {
         address priceFeed; //ETH/USD price feed address
@@ -22,7 +25,7 @@ contract HelperConfig is Script {
         } else if (block.chainid == 1) {
             activeNetworkConfig = getMainnetEthConfig();
         } else {
-            activeNetworkConfig = getAnvilEthConfig();
+            activeNetworkConfig = getOrCreateAnvilEthConfig();
         }
     }
 
@@ -42,11 +45,17 @@ contract HelperConfig is Script {
         return mainnetConfig;
     }
 
-    function getAnvilEthConfig() external returns (NetworkConfig memory) {
-        // price feed address
+    function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
+        // if the price feed is already set, return the active network config
+        if (activeNetworkConfig.priceFeed != address(0)) {
+            return activeNetworkConfig;
+        }
 
         vm.startBroadcast();
-        MockV3Aggregator mockPriceFeed = new MockV3Aggregator(8, 2000e8); // decimal of eth/usd is 8
+        MockV3Aggregator mockPriceFeed = new MockV3Aggregator(
+            DECIMALS,
+            INITIAL_PRICE
+        ); // decimal of eth/usd is 8
         vm.stopBroadcast();
 
         NetworkConfig memory anvilConfig = NetworkConfig({
